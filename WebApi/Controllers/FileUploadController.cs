@@ -1,7 +1,7 @@
 
+using Domain.Dtos;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
-using WebApi.Dtos;
-using WebApi.Services;
 
 [ApiController]
 [Route("[controller]")]
@@ -17,22 +17,39 @@ public class FileUploadController : ControllerBase
     }
 
     [HttpGet("GetList")]
-    public List<GetQuoteDto> GetListOfFiles()
+    public async Task<List<GetQuoteDto>> GetListOfFiles()
     {
-        return _quoteService.GetQuotes();
+        return await _quoteService.GetQuotes();
     }
 
     [HttpPost("Add")]
+    [DisableRequestSizeLimit,
+     RequestFormLimits(MultipartBodyLengthLimit = int.MaxValue, 
+         ValueLengthLimit = int.MaxValue)]
     public GetQuoteDto UploadFile([FromForm] AddQuoteDto quote)
     {
-        return _quoteService.AddQuote(quote);
+        return  _quoteService.AddQuote(quote);
+    }
+    
+    [HttpGet("sync1")]
+    public string Syncrounous1()
+    {
+        Thread.Sleep(15000);
+        return "Hi";
+    }
+    
+    [HttpGet("sync2")]
+    public string Syncrounous2()
+    {
+        // Thread.Sleep(15000);
+        return "Hi from sync 2";
     }
 
     
     [HttpPut("Update")]
-    public GetQuoteDto Update([FromForm] AddQuoteDto quote)
+    public async Task<GetQuoteDto> Update([FromForm] AddQuoteDto quote)
     {
-        return _quoteService.UpdateQuote(quote);
+        return  _quoteService.UpdateQuote(quote);
     }
 
 

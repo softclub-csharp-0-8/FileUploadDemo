@@ -1,5 +1,5 @@
-using WebApi.Context;
-using WebApi.Services;
+using Infrastructure.Context;
+using Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
