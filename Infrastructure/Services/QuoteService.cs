@@ -1,113 +1,52 @@
 using Dapper;
 using Domain.Dtos;
+using Domain.Entities;
 using Infrastructure.Context;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services;
 
 public class QuoteService
 {
-    private readonly DapperContext _context;
-    private readonly IFileService _fileService;
+    private readonly DataContext _context;
 
-    public QuoteService(DapperContext context,IFileService fileService)
+    public QuoteService(DataContext context)
     {
         _context = context;
-        _fileService = fileService;
+       
     }
 
-    public async Task<List<GetQuoteDto>> GetQuotes()
+    public async Task<List<Quote>> GetQuotes()
     {
-        using (var conn = _context.CreateConnection())
-        {
-            var sql = "select id, author,quotetext,categoryid,file_name as filename from quotes order by id;";
-            var result =  await conn.QueryAsync<GetQuoteDto>(sql);
-            return result.ToList();
-        }
+        return await _context.Quotes.ToListAsync(); // select * from quotes
     }
     
-    public async Task<GetQuoteDto> GetQuoteById(int id)
+    public async Task<Quote> GetQuoteById(int id)
     {
-        using (var conn = _context.CreateConnection())
-        {
-            var sql = "select id, author,quotetext,categoryid,file_name as filename from quotes where id=@id";
-            var result =  await conn.QuerySingleOrDefaultAsync<GetQuoteDto>(sql,new {id});
-            return result;
-        }
+        return await _context.Quotes.FindAsync(id);
     }
 
-    public GetQuoteDto AddQuote(AddQuoteDto quote)
+    public async Task<Quote> AddQuote(Quote quote)
     {
-        using (var conn = _context.CreateConnection())
-        {
-            //upload file
-            var filename =  _fileService.CreateFileAsync("images", quote.File);
-            var sql = "insert into quotes (author, quotetext, categoryid, file_name) VALUES (@author, @quotetext, @categoryid, @filename) returning id;";
-            var result =  conn.ExecuteScalar<int>(sql,new
-            {
-                quote.Author,
-                quote.QuoteText,
-                quote.CategoryId,
-                filename
-            });
-            return new GetQuoteDto()
-            {
-                Author = quote.Author,
-                QuoteText = quote.QuoteText,
-                CategoryId = quote.CategoryId,
-                FileName = filename,
-                Id = result
-            };
-        }
+        await _context.Quotes.AddAsync(quote); // insert into quotes
+       await _context.SaveChangesAsync();
+       return quote;
     }
 
-    public GetQuoteDto UpdateQuote(AddQuoteDto quote)
+    public async Task<Quote> UpdateQuote(Quote quote)
     {
-        using (var conn = _context.CreateConnection())
-        {
-            var existing =
-                conn.QuerySingleOrDefault<GetQuoteDto>(
-                    "select id, author,quotetext,categoryid,file_name as filename from quotes where id=@id;",
-                    new {quote.Id});
-            if (existing == null)
-            {
-                return new GetQuoteDto();
-            }
+        var find = await _context.Quotes.FindAsync(quote.Id);
+        find.Author = quote.Author;
+        find.QuoteText = quote.QuoteText;
+        await _context.SaveChangesAsync();
+        return quote;
+    }
 
-            string filename = null;
-            // if file not found on database ->just add
-            //if file found in database and file is found in quote -> delete file in database and add new file
-            //if file found in database and not found in quote -> just do nothing
-            if (quote.File != null && existing.FileName != null)
-            {
-                _fileService.DeleteFile("images", existing.FileName);
-                filename =  _fileService.CreateFileAsync("images", quote.File);
-            }
-            else if (quote.File != null && existing.FileName == null)
-            {
-                filename =  _fileService.CreateFileAsync("images", quote.File);
-            }
-            var sql = "update quotes set author=@author, quotetext=@quotetext,categoryid=@categoryid  where id=@id";
-            if (quote.File != null)
-            {
-                sql =
-                    "update quotes set author=@author, quotetext=@quotetext,categoryid=@categoryid,file_name=@filename where id=@id";
-            }
-            var result =  conn.Execute(sql,new
-            {
-                quote.Author,
-                quote.QuoteText,
-                quote.CategoryId,
-                filename,
-                quote.Id
-            });
-            return new GetQuoteDto()
-            {
-                Author = quote.Author,
-                QuoteText = quote.QuoteText,
-                CategoryId = quote.CategoryId,
-                FileName = filename,
-                Id = result
-            };
-        }
+    public async Task<bool> Delete(int id)
+    {
+        var find = await _context.Quotes.FindAsync(id);
+        _context.Quotes.Remove(find);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }
