@@ -1,9 +1,8 @@
-namespace Domain.Dtos;
+namespace Domain.Dtos.Employee;
 
-public class EmployeeDto
+public class EmployeeBaseDto
 {
     public int Id { get; set; }
     public string FullName { get; set; }
     public int CompanyId { get; set; }
-    public  string CompanyName { get; set; }
 }
